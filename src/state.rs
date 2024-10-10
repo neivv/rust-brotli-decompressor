@@ -3,13 +3,12 @@
 #![allow(non_upper_case_globals)]
 
 
-use alloc;
 use core;
 use context::kContextLookup;
 use bit_reader::{BrotliBitReader, BrotliGetAvailableBits, BrotliInitBitReader};
 use huffman::{BROTLI_HUFFMAN_MAX_CODE_LENGTH, BROTLI_HUFFMAN_MAX_CODE_LENGTHS_SIZE,
               BROTLI_HUFFMAN_MAX_TABLE_SIZE, HuffmanCode, HuffmanTreeGroup};
-use alloc::SliceWrapper;
+use crate::SliceWrapper;
 
 #[allow(dead_code)]
 pub enum WhichTreeGroup {
@@ -143,7 +142,7 @@ pub enum BrotliRunningReadBlockLengthState {
 
 pub const kLiteralContextBits: usize = 6;
 
-pub struct BlockTypeAndLengthState<AllocHC: alloc::Allocator<HuffmanCode>> {
+pub struct BlockTypeAndLengthState<AllocHC: crate::Allocator<HuffmanCode>> {
   pub substate_read_block_length: BrotliRunningReadBlockLengthState,
   pub num_block_types: [u32; 3],
   pub block_length_index: u32,
@@ -153,9 +152,9 @@ pub struct BlockTypeAndLengthState<AllocHC: alloc::Allocator<HuffmanCode>> {
   pub block_type_rb: [u32; 6],
 }
 
-pub struct BrotliState<AllocU8: alloc::Allocator<u8>,
-                       AllocU32: alloc::Allocator<u32>,
-                       AllocHC: alloc::Allocator<HuffmanCode>>
+pub struct BrotliState<AllocU8: crate::Allocator<u8>,
+                       AllocU32: crate::Allocator<u32>,
+                       AllocHC: crate::Allocator<HuffmanCode>>
 {
   pub state: BrotliRunningState,
 
@@ -381,9 +380,9 @@ macro_rules! make_brotli_state {
     );
 }
 impl <'brotli_state,
-      AllocU8 : alloc::Allocator<u8>,
-      AllocU32 : alloc::Allocator<u32>,
-      AllocHC : alloc::Allocator<HuffmanCode> > BrotliState<AllocU8, AllocU32, AllocHC> {
+      AllocU8 : crate::Allocator<u8>,
+      AllocU32 : crate::Allocator<u32>,
+      AllocHC : crate::Allocator<HuffmanCode> > BrotliState<AllocU8, AllocU32, AllocHC> {
     pub fn new(alloc_u8 : AllocU8,
            alloc_u32 : AllocU32,
            alloc_hc : AllocHC) -> Self{
@@ -456,9 +455,9 @@ impl <'brotli_state,
 }
 
 impl <'brotli_state,
-      AllocU8 : alloc::Allocator<u8>,
-      AllocU32 : alloc::Allocator<u32>,
-      AllocHC : alloc::Allocator<HuffmanCode> > Drop for BrotliState<AllocU8, AllocU32, AllocHC> {
+      AllocU8 : crate::Allocator<u8>,
+      AllocU32 : crate::Allocator<u32>,
+      AllocHC : crate::Allocator<HuffmanCode> > Drop for BrotliState<AllocU8, AllocU32, AllocHC> {
     fn drop(&mut self) {
         self.BrotliStateCleanup();
     }

@@ -2,10 +2,9 @@
 #![allow(non_upper_case_globals)]
 mod tests;
 use ::core;
-use alloc;
-use alloc::Allocator;
-use alloc::SliceWrapper;
-use alloc::SliceWrapperMut;
+use crate::Allocator;
+use crate::SliceWrapper;
+use crate::SliceWrapperMut;
 use core::default::Default;
 pub const BROTLI_HUFFMAN_MAX_CODE_LENGTH: usize = 15;
 
@@ -56,8 +55,8 @@ pub struct HuffmanTreeGroup<Alloc32: Allocator<u32>, AllocHC: Allocator<HuffmanC
   pub num_htrees: u16,
 }
 
-impl<AllocU32 : alloc::Allocator<u32>,
-     AllocHC : alloc::Allocator<HuffmanCode> > HuffmanTreeGroup<AllocU32, AllocHC> {
+impl<AllocU32 : crate::Allocator<u32>,
+     AllocHC : crate::Allocator<HuffmanCode> > HuffmanTreeGroup<AllocU32, AllocHC> {
     pub fn init(self : &mut Self, mut alloc_u32 : &mut AllocU32, mut alloc_hc : &mut AllocHC,
                 alphabet_size : u16, max_symbol: u16, ntrees : u16) {
         self.reset(&mut alloc_u32, &mut alloc_hc);
@@ -114,8 +113,8 @@ impl<AllocU32 : alloc::Allocator<u32>,
     }
 }
 
-impl<AllocU32 : alloc::Allocator<u32>,
-     AllocHC : alloc::Allocator<HuffmanCode> > Default for HuffmanTreeGroup<AllocU32, AllocHC> {
+impl<AllocU32 : crate::Allocator<u32>,
+     AllocHC : crate::Allocator<HuffmanCode> > Default for HuffmanTreeGroup<AllocU32, AllocHC> {
     fn default() -> Self {
         HuffmanTreeGroup::<AllocU32, AllocHC> {
           htrees : AllocU32::AllocatedMemory::default(),
