@@ -17,6 +17,9 @@ autobins = false
 doc = false
 name = "brotli-decompressor"
 
+[profile.dev]
+opt-level = 1
+
 [profile.release]
 incremental=false
 lto=true

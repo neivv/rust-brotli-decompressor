@@ -2135,75 +2135,6 @@ fn memcpy_within_slice(data: &mut [u8], off_dst: usize, off_src: usize, size: us
   }
 }
 
-pub fn BrotliDecoderHasMoreOutput<AllocU8: alloc::Allocator<u8>,
-                           AllocU32: alloc::Allocator<u32>,
-                           AllocHC: alloc::Allocator<HuffmanCode>>
-  (s: &BrotliState<AllocU8, AllocU32, AllocHC>) -> bool {
-  /* After unrecoverable error remaining output is considered nonsensical. */
-  if is_fatal(s.error_code) {
-    return false;
-  }
-  s.ringbuffer.len() != 0 && UnwrittenBytes(s, false) != 0
-}
-pub fn BrotliDecoderTakeOutput<'a,
-                               AllocU8: alloc::Allocator<u8>,
-                               AllocU32: alloc::Allocator<u32>,
-                               AllocHC: alloc::Allocator<HuffmanCode>>(
-  s: &'a mut BrotliState<AllocU8, AllocU32, AllocHC>,
-  size: &mut usize,
-) -> &'a [u8] {
-  let one:usize = 1;
-  let mut available_out = if *size != 0 { *size } else { one << 24 };
-  let requested_out = available_out;
-  if (s.ringbuffer.len() == 0) || is_fatal(s.error_code) {
-    *size = 0;
-    return &[];
-  }
-  WrapRingBuffer(s);
-  let mut ign = 0usize;
-  let mut ign2 = 0usize;
-  let (status, result) = WriteRingBuffer(&mut available_out, None, &mut ign,&mut ign2, true, s);
-  // Either WriteRingBuffer returns those "success" codes...
-  match status {
-    BrotliDecoderErrorCode::BROTLI_DECODER_SUCCESS |  BrotliDecoderErrorCode::BROTLI_DECODER_NEEDS_MORE_OUTPUT => {
-      *size = requested_out - available_out;
-    },
-    _ => {
-      // ... or stream is broken. Normally this should be caught by
-      //   BrotliDecoderDecompressStream, this is just a safeguard.
-      if is_fatal(status) {
-        // SaveErrorCode!(s, status); //borrow checker doesn't like this
-        // but since it's a safeguard--ignore
-      }
-      *size = 0;
-      return &[];
-    }
-  }
-  return result;
-}
-
-#[cfg(feature="ffi-api")]
-pub fn BrotliDecoderIsUsed<AllocU8: alloc::Allocator<u8>,
-                           AllocU32: alloc::Allocator<u32>,
-                           AllocHC: alloc::Allocator<HuffmanCode>>(
-  s: &BrotliState<AllocU8, AllocU32, AllocHC>) -> bool {
-  if let BrotliRunningState::BROTLI_STATE_UNINITED = s.state {
-    false
-  } else {
-    bit_reader::BrotliGetAvailableBits(&s.br) != 0
-  }
-}
-
-pub fn BrotliDecoderIsFinished<AllocU8: alloc::Allocator<u8>,
-                               AllocU32: alloc::Allocator<u32>,
-                               AllocHC: alloc::Allocator<HuffmanCode>>(
-  s: &BrotliState<AllocU8, AllocU32, AllocHC>) -> bool {
-  if let BrotliRunningState::BROTLI_STATE_DONE = s.state {
-    !BrotliDecoderHasMoreOutput(s)
-  } else {
-    false
-  }
-}
 
 pub fn BrotliDecoderGetErrorCode<AllocU8: alloc::Allocator<u8>,
                                AllocU32: alloc::Allocator<u32>,
@@ -2973,7 +2904,7 @@ pub fn BrotliDecompressStream<AllocU8: alloc::Allocator<u8>,
 
           let mut block_length_out: u32 = 0;
           let ind_ret: (bool, u32);
-          
+
           ind_ret = SafeReadBlockLengthIndex(&s.block_type_length_state.substate_read_block_length,
                                              s.block_type_length_state.block_length_index,
                                              fast_slice!((s.block_type_length_state.block_len_trees)

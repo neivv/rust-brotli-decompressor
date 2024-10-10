@@ -394,28 +394,6 @@ impl <'brotli_state,
         BrotliInitBitReader(&mut retval.br);
         retval
     }
-    pub fn new_with_custom_dictionary(alloc_u8 : AllocU8,
-           alloc_u32 : AllocU32,
-           alloc_hc : AllocHC,
-           custom_dict: AllocU8::AllocatedMemory) -> Self{
-        let custom_dict_len = custom_dict.slice().len();
-        let mut retval = make_brotli_state!(alloc_u8, alloc_u32, alloc_hc, custom_dict, custom_dict_len);
-        retval.context_map_table = retval.alloc_hc.alloc_cell(
-          BROTLI_HUFFMAN_MAX_TABLE_SIZE as usize);
-        retval.large_window =  true;
-        BrotliInitBitReader(&mut retval.br);
-        retval
-    }
-    pub fn new_strict(alloc_u8 : AllocU8,
-           alloc_u32 : AllocU32,
-           alloc_hc : AllocHC) -> Self{
-        let mut retval = make_brotli_state!(alloc_u8, alloc_u32, alloc_hc, AllocU8::AllocatedMemory::default(), 0);
-        retval.context_map_table = retval.alloc_hc.alloc_cell(
-          BROTLI_HUFFMAN_MAX_TABLE_SIZE as usize);
-        retval.large_window =  false;
-        BrotliInitBitReader(&mut retval.br);
-        retval
-    }
     pub fn BrotliStateMetablockBegin(self : &mut Self) {
         self.meta_block_remaining_len = 0;
         self.block_type_length_state.block_length[0] = 1u32 << 24;
@@ -474,45 +452,6 @@ impl <'brotli_state,
 
       //FIXME??  BROTLI_FREE(s, s->legacy_input_buffer);
       //FIXME??  BROTLI_FREE(s, s->legacy_output_buffer);
-    }
-
-    pub fn BrotliStateIsStreamStart(self : &Self) -> bool {
-        match self.state {
-            BrotliRunningState::BROTLI_STATE_UNINITED =>
-                BrotliGetAvailableBits(&self.br) == 0,
-            _ => false,
-        }
-    }
-
-    pub fn BrotliStateIsStreamEnd(self : &Self) -> bool {
-        match self.state {
-            BrotliRunningState::BROTLI_STATE_DONE => true,
-            _ => false
-        }
-    }
-    pub fn BrotliHuffmanTreeGroupInit(self :&mut Self, group : WhichTreeGroup,
-                                      alphabet_size : u16, max_symbol: u16, ntrees : u16) {
-        match group {
-            WhichTreeGroup::LITERAL => self.literal_hgroup.init(&mut self.alloc_u32,
-                                                                &mut self.alloc_hc,
-                                                                alphabet_size, max_symbol, ntrees),
-            WhichTreeGroup::INSERT_COPY => self.insert_copy_hgroup.init(&mut self.alloc_u32,
-                                                                        &mut self.alloc_hc,
-                                                                        alphabet_size, max_symbol, ntrees),
-            WhichTreeGroup::DISTANCE => self.distance_hgroup.init(&mut self.alloc_u32,
-                                                                  &mut self.alloc_hc,
-                                                                  alphabet_size, max_symbol, ntrees),
-        }
-    }
-    pub fn BrotliHuffmanTreeGroupRelease(self :&mut Self, group : WhichTreeGroup) {
-        match group {
-            WhichTreeGroup::LITERAL => self.literal_hgroup.reset(&mut self.alloc_u32,
-                                                                 &mut self.alloc_hc),
-            WhichTreeGroup::INSERT_COPY => self.insert_copy_hgroup.reset(&mut self.alloc_u32,
-                                                                         &mut self.alloc_hc),
-            WhichTreeGroup::DISTANCE => self.distance_hgroup.reset(&mut self.alloc_u32,
-                                                                   &mut self.alloc_hc),
-        }
     }
 }
 

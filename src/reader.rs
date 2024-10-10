@@ -13,80 +13,6 @@ pub use io_wrappers::{IntoIoReader, IoReaderWrapper, IoWriterWrapper};
 pub use super::decode::{BrotliDecompressStream, BrotliResult};
 pub use alloc::{AllocatedStackMemory, Allocator, SliceWrapper, SliceWrapperMut, StackAllocator};
 
-#[cfg(feature="std")]
-pub struct DecompressorCustomAlloc<R: Read,
-     BufferType : SliceWrapperMut<u8>,
-     AllocU8 : Allocator<u8>,
-     AllocU32 : Allocator<u32>,
-     AllocHC : Allocator<HuffmanCode> >(DecompressorCustomIo<io::Error,
-                                                             IntoIoReader<R>,
-                                                             BufferType,
-                                                             AllocU8, AllocU32, AllocHC>);
-
-
-#[cfg(feature="std")]
-impl<R: Read,
-     BufferType : SliceWrapperMut<u8>,
-     AllocU8,
-     AllocU32,
-     AllocHC> DecompressorCustomAlloc<R, BufferType, AllocU8, AllocU32, AllocHC>
- where AllocU8 : Allocator<u8>, AllocU32 : Allocator<u32>, AllocHC : Allocator<HuffmanCode>
-    {
-
-    pub fn new(r: R, buffer : BufferType,
-               alloc_u8 : AllocU8, alloc_u32 : AllocU32, alloc_hc : AllocHC) -> Self {
-        DecompressorCustomAlloc::<R, BufferType, AllocU8, AllocU32, AllocHC>(
-          DecompressorCustomIo::<Error,
-                                 IntoIoReader<R>,
-                                 BufferType,
-                                 AllocU8, AllocU32, AllocHC>::new(IntoIoReader::<R>(r),
-                                                                  buffer,
-                                                                  alloc_u8, alloc_u32, alloc_hc,
-                                                                  Error::new(ErrorKind::InvalidData,
-                                                                             "Invalid Data")))
-    }
-
-    pub fn new_with_custom_dictionary(r: R, buffer : BufferType,
-               alloc_u8 : AllocU8, alloc_u32 : AllocU32, alloc_hc : AllocHC,
-               dict: AllocU8::AllocatedMemory) -> Self {
-        DecompressorCustomAlloc::<R, BufferType, AllocU8, AllocU32, AllocHC>(
-          DecompressorCustomIo::<Error,
-                                 IntoIoReader<R>,
-                                 BufferType,
-                                 AllocU8, AllocU32, AllocHC>::new_with_custom_dictionary(IntoIoReader::<R>(r),
-                                                                                   buffer,
-                                                                                   alloc_u8, alloc_u32, alloc_hc,
-                                                                                   dict,
-                                                                                   Error::new(ErrorKind::InvalidData,
-                                                                                              "Invalid Data")))
-    }
-
-    pub fn get_ref(&self) -> &R {
-      &self.0.get_ref().0
-    }
-    pub fn get_mut(&mut self) -> &mut R {
-      &mut self.0.get_mut().0
-    }
-    pub fn into_inner(self) -> R {
-      self.0.into_inner().0
-    }
-}
-#[cfg(feature="std")]
-impl<R: Read,
-     BufferType : SliceWrapperMut<u8>,
-     AllocU8 : Allocator<u8>,
-     AllocU32 : Allocator<u32>,
-     AllocHC : Allocator<HuffmanCode> > Read for DecompressorCustomAlloc<R,
-                                                                         BufferType,
-                                                                         AllocU8,
-                                                                         AllocU32,
-                                                                         AllocHC> {
-  	fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
-       self.0.read(buf)
-    }
-}
-
-
 #[cfg(not(any(feature="unsafe", not(feature="std"))))]
 pub struct Decompressor<R: Read>(DecompressorCustomAlloc<R,
                                                          <StandardAlloc
@@ -129,57 +55,6 @@ impl<R: Read> Decompressor<R> {
   }
 }
 
-
-#[cfg(all(feature="unsafe", feature="std"))]
-pub struct Decompressor<R: Read>(DecompressorCustomAlloc<R,
-                                                         <HeapAlloc<u8>
-                                                          as Allocator<u8>>::AllocatedMemory,
-                                                         HeapAlloc<u8>,
-                                                         HeapAlloc<u32>,
-                                                         HeapAlloc<HuffmanCode> >);
-
-
-#[cfg(all(feature="unsafe", feature="std"))]
-impl<R: Read> Decompressor<R> {
-  pub fn new(r: R, buffer_size: usize) -> Self {
-     let dict = <HeapAlloc<u8> as Allocator<u8>>::AllocatedMemory::default();
-     Self::new_with_custom_dictionary(r, buffer_size, dict)
-  }
-  pub fn new_with_custom_dictionary(r: R, buffer_size: usize, dict: <HeapAlloc<u8>
-                                                 as Allocator<u8>>::AllocatedMemory) -> Self {
-    let mut alloc_u8 = HeapAlloc::<u8>::new(0);
-    let buffer = alloc_u8.alloc_cell(if buffer_size == 0 {4096} else {buffer_size});
-    let alloc_u32 = HeapAlloc::<u32>::new(0);
-    let alloc_hc = HeapAlloc::<HuffmanCode>::new(HuffmanCode{
-        bits:0, value: 0,
-    });
-    Decompressor::<R>(DecompressorCustomAlloc::<R,
-                                                <HeapAlloc<u8>
-                                                 as Allocator<u8>>::AllocatedMemory,
-                                                HeapAlloc<u8>,
-                                                HeapAlloc<u32>,
-                                                HeapAlloc<HuffmanCode> >
-      ::new_with_custom_dictionary(r, buffer, alloc_u8, alloc_u32, alloc_hc, dict))
-  }
-
-  pub fn get_ref(&self) -> &R {
-    self.0.get_ref()
-  }
-  pub fn get_mut(&mut self) -> &mut R {
-    &mut (self.0).0.get_mut().0
-  }
-  pub fn into_inner(self) -> R {
-    self.0.into_inner()
-  }
-}
-
-
-#[cfg(feature="std")]
-impl<R: Read> Read for Decompressor<R> {
-  fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error> {
-    self.0.read(buf)
-  }
-}
 
 pub struct DecompressorCustomIo<ErrType,
                                 R: CustomRead<ErrType>,
